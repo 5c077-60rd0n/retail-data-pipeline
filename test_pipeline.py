@@ -24,6 +24,10 @@ def test_imports():
         return True
     except ImportError as e:
         print(f"❌ Missing required package: {e}")
+        print("\n💡 Setup Instructions:")
+        print("   For pip users: pip install -r requirements.txt")
+        print("   For conda users: conda env create -f environment.yml")
+        print("                   conda activate retail-data-pipeline")
         return False
 
 def test_data_files():
