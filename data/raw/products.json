@@ -1,0 +1,7 @@
+[
+  {"product_id": "P100", "category": "Electronics", "price": 199.99, "stock_level": 24},
+  {"product_id": "P101", "category": "Books", "price": 14.99, "stock_level": 103},
+  {"product_id": "P102", "category": "Clothing", "price": 39.95, "stock_level": 67},
+  {"product_id": "P103", "category": "Sports", "price": 89.50, "stock_level": 15},
+  {"product_id": "P104", "category": "Home Decor", "price": 29.99, "stock_level": 49}
+]
