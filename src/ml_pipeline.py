@@ -57,10 +57,10 @@ class RetailMLPipeline:
         # (This is a business-relevant ML problem)
         df['high_value_customer'] = (df['total_spend'] > df['total_spend'].median()).astype(int)
         
-        # Prepare features (exclude non-predictive columns)
+        # Prepare features (exclude non-predictive columns and non-numeric columns)
         feature_columns = [col for col in df.columns if col not in 
                           ['product_id', 'customer_id', 'name', 'email', 'description', 
-                           'signup_date', 'high_value_customer']]
+                           'signup_date', 'high_value_customer', 'country']]
         
         X = df[feature_columns]
         y = df['high_value_customer']
@@ -71,10 +71,22 @@ class RetailMLPipeline:
         """Train multiple ML models and compare performance."""
         print("🤖 Training multiple ML models...")
         
+        # Handle small datasets - adjust test size and remove stratification if needed
+        n_samples = len(X)
+        if n_samples < 10:
+            test_size = 0.4  # Use larger test size for tiny datasets
+            stratify = None  # Don't stratify with very small datasets
+            print(f"   📊 Small dataset detected ({n_samples} samples), adjusting parameters...")
+        else:
+            test_size = 0.2
+            stratify = y
+        
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
+            X, y, test_size=test_size, random_state=42, stratify=stratify
         )
+        
+        print(f"   📊 Train/Test split: {len(X_train)}/{len(X_test)} samples")
         
         # Scale features
         X_train_scaled = self.scaler.fit_transform(X_train)
@@ -101,9 +113,29 @@ class RetailMLPipeline:
                 y_pred = model.predict(X_test)
                 y_pred_proba = model.predict_proba(X_test)[:, 1]
             
-            # Calculate metrics
-            auc_score = roc_auc_score(y_test, y_pred_proba)
-            cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='roc_auc')
+            # Calculate metrics (handle small datasets)
+            try:
+                auc_score = roc_auc_score(y_test, y_pred_proba)
+            except ValueError:
+                # Handle case where only one class is present
+                auc_score = 0.5  # Random baseline for single-class datasets
+                print(f"    Warning: Only one class present, using baseline AUC score")
+            
+            # Handle cross-validation for small datasets
+            try:
+                cv_folds = min(5, len(X_train))  # Don't exceed number of samples
+                if cv_folds < 2:
+                    cv_scores = np.array([auc_score])  # Use single test score
+                    print(f"    Warning: Dataset too small for CV, using test score")
+                else:
+                    if name == 'Logistic Regression':
+                        cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=cv_folds, scoring='roc_auc')
+                    else:
+                        cv_scores = cross_val_score(model, X_train, y_train, cv=cv_folds, scoring='roc_auc')
+            except ValueError as e:
+                # Fallback for any CV issues
+                cv_scores = np.array([auc_score])
+                print(f"    Warning: CV failed ({e}), using test score")
             
             # Store results
             self.results[name] = {
@@ -132,32 +164,58 @@ class RetailMLPipeline:
         """Perform hyperparameter tuning on the best model."""
         print("🔧 Performing hyperparameter tuning...")
         
+        # Check if dataset is large enough for hyperparameter tuning
+        if len(X) < 10:
+            print("   ⚠️ Dataset too small for hyperparameter tuning, using default parameters")
+            return None
+        
         # Example: Tune Random Forest (assuming it's often the best)
         rf = RandomForestClassifier(random_state=42)
         
         param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [5, 10, None],
-            'min_samples_split': [2, 5, 10]
+            'n_estimators': [50, 100],  # Reduced for small datasets
+            'max_depth': [5, 10],
+            'min_samples_split': [2, 5]
         }
         
-        grid_search = GridSearchCV(
-            rf, param_grid, cv=3, scoring='roc_auc', n_jobs=-1, verbose=1
-        )
+        # Adjust CV folds for small datasets
+        cv_folds = min(3, len(X) // 2)  # Ensure at least 2 samples per fold
+        if cv_folds < 2:
+            print("   ⚠️ Dataset too small for cross-validation, skipping hyperparameter tuning")
+            return None
         
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
-        
-        grid_search.fit(X_train, y_train)
-        
-        print(f"Best parameters: {grid_search.best_params_}")
-        print(f"Best CV score: {grid_search.best_score_:.3f}")
-        
-        # Update best model
-        self.best_model = grid_search.best_estimator_
-        
-        return grid_search
+        try:
+            grid_search = GridSearchCV(
+                rf, param_grid, cv=cv_folds, scoring='roc_auc', n_jobs=-1, verbose=1
+            )
+            
+            # Handle small datasets - adjust test size and remove stratification if needed
+            n_samples = len(X)
+            if n_samples < 10:
+                test_size = 0.4  # Use larger test size for tiny datasets
+                stratify = None  # Don't stratify with very small datasets
+            else:
+                test_size = 0.2
+                stratify = y
+            
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=42, stratify=stratify
+            )
+            
+            grid_search.fit(X_train, y_train)
+            
+            print(f"Best parameters: {grid_search.best_params_}")
+            print(f"Best CV score: {grid_search.best_score_:.3f}")
+            
+            # Update best model
+            self.best_model = grid_search.best_estimator_
+            
+            return grid_search
+            
+        except Exception as e:
+            print(f"   ⚠️ Hyperparameter tuning failed: {e}")
+            print("   Using default parameters instead")
+            return None
     
     def generate_business_insights(self, X, y, df):
         """Generate business-relevant insights from the ML model."""
