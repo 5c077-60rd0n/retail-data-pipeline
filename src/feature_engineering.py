@@ -3,9 +3,13 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from datetime import datetime
 import os
+from pathlib import Path
 
-CLEANED_DATA_PATH = "data/processed/cleaned_data.csv"
-TRANSFORMED_DATA_PATH = "data/processed/transformed_features.csv"
+# Get project root directory (parent of src directory)
+PROJECT_ROOT = Path(__file__).parent.parent
+
+CLEANED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "cleaned_data.csv"
+TRANSFORMED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "transformed_features.csv"
 
 
 def feature_engineering(df):

@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 
-RAW_DATA_PATH = "data/raw/combined_data.csv"
-CLEANED_DATA_PATH = "data/processed/cleaned_data.csv"
+# Get project root directory (parent of src directory)
+PROJECT_ROOT = Path(__file__).parent.parent
+
+RAW_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "combined_data.csv"
+CLEANED_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "cleaned_data.csv"
 
 
 def clean_data(df):

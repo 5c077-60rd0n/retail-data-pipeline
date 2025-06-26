@@ -1,13 +1,16 @@
 import pandas as pd
 import json
 import os
+from pathlib import Path
 
-# Paths
+# Get project root directory (parent of src directory)
+PROJECT_ROOT = Path(__file__).parent.parent
 
-CUSTOMERS_CSV = "data/raw/customers.csv"
-PRODUCTS_JSON = "data/raw/products.json"
-DESCRIPTIONS_TXT = "data/raw/product_descriptions.txt"
-OUTPUT_PATH = "data/raw/combined_data.csv"
+# Paths relative to project root
+CUSTOMERS_CSV = PROJECT_ROOT / "data" / "raw" / "customers.csv"
+PRODUCTS_JSON = PROJECT_ROOT / "data" / "raw" / "products.json"
+DESCRIPTIONS_TXT = PROJECT_ROOT / "data" / "raw" / "product_descriptions.txt"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "combined_data.csv"
 
 
 def load_customers():
